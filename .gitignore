@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+cv_finetune.py
+diagnose.py
+finetune.py
+sweep_pool.py
+sweep_prf.py
+sweep_rerank.py
+sweep_weights.py
+tune.py
