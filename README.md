@@ -1,4 +1,4 @@
-cat > ~/Desktop/sectionb/README.md << 'ENDOFFILE'
+
 # Section B — Wikipedia Retrieval Pipeline
 
 ## Method
