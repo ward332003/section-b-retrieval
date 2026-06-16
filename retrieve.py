@@ -44,15 +44,15 @@ def _load_resources(artifacts_dir: Optional[Path] = None) -> None:
     _cross_encoder = CrossEncoder(CROSS_ENCODER_MODEL)
     _cross_encoder.predict([("warmup", "warmup")])  # warm up GPU kernels
 
-    # Load truncated page texts (title + first 300 words) for cross-encoder input
-    _page_texts = {}
-    for path in sorted(ENTRIES_DIR.glob("*.json")):
-        d = json.loads(path.read_text(encoding="utf-8"))
-        pid = int(d.get("page_id", path.stem))
-        title = str(d.get("title", "")).strip()
-        content = str(d.get("content", "")).strip()
-        words = content.split()[:300]
-        _page_texts[pid] = f"{title}\n\n{' '.join(words)}"
+    # DETERMINISTIC ACCELERATION FIX:
+    # Load the single precomputed, truncated text dictionary from artifacts in under 1 second.
+    base_dir = artifacts_dir if artifacts_dir is not None else Path("artifacts")
+    texts_path = base_dir / "page_texts_truncated.json"
+    
+    with open(texts_path, "r", encoding="utf-8") as f:
+        raw_dict = json.load(f)
+        # JSON keys are native strings; deserialize them back to integer page_ids
+        _page_texts = {int(k): v for k, v in raw_dict.items()}
 
 
 def _bm25_scores(query: str) -> np.ndarray:

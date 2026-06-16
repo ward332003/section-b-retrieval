@@ -8,6 +8,7 @@ Artifacts produced under artifacts/:
   chunk_ids.npy       — chunk position index (0 = first chunk of a page)
   bm25.pkl            — BM25 inverted index over full page text
   index_meta.json     — build metadata (num pages, num chunks, model name)
+  page_texts_truncated.json — Precomputed text dictionary for Cross-Encoder
 """
 from __future__ import annotations
 
@@ -34,6 +35,7 @@ CHUNK_PAGE_IDS_NAME = "chunk_page_ids.npy"
 CHUNK_IDS_NAME = "chunk_ids.npy"
 BM25_NAME = "bm25.pkl"
 INDEX_META_NAME = "index_meta.json"
+PAGE_TEXTS_TRUNCATED_NAME = "page_texts_truncated.json"  # Acceleration fix filename
 
 
 def tokenize(text: str) -> List[str]:
@@ -110,12 +112,23 @@ def build_index(
     print("Embedding pages (stage-1)...")
     page_texts = []
     page_ids = []
+    
+    # ACCELERATION FIX: Pre-extract cross-encoder text slices (300 words) offline
+    cross_encoder_texts_cache = {}
+
     for r in records:
-        page_ids.append(int(r["page_id"]))
+        pid = int(r["page_id"])
+        page_ids.append(pid)
         title = str(r.get("title", "")).strip()
         content = str(r.get("content", "")).strip()
-        words = content.split()[:180]
-        page_texts.append(f"{title}\n\n{' '.join(words)}")
+        
+        # 180 words for FAISS vector index
+        words_faiss = content.split()[:180]
+        page_texts.append(f"{title}\n\n{' '.join(words_faiss)}")
+
+        # 300 words cache built completely offline for the Cross-Encoder map
+        words_ce = content.split()[:300]
+        cross_encoder_texts_cache[pid] = f"{title}\n\n{' '.join(words_ce)}"
 
     page_vectors = embed_texts(page_texts, batch_size=128)
     np.save(out_dir / PAGE_IDS_NAME, np.array(page_ids, dtype=np.int64))
@@ -124,6 +137,11 @@ def build_index(
     faiss_pages.add(page_vectors)
     faiss.write_index(faiss_pages, str(out_dir / FAISS_PAGES_NAME))
     print(f"Page FAISS saved: {faiss_pages.ntotal} vectors.")
+
+    # Save the precomputed truncated JSON map to your artifacts
+    with open(out_dir / PAGE_TEXTS_TRUNCATED_NAME, "w", encoding="utf-8") as f:
+        json.dump(cross_encoder_texts_cache, f)
+    print("Precomputed cross-encoder text segments saved.")
 
     # --- Stage 2: chunk-level embeddings (used by cross-encoder reranker) ---
     print("Chunking corpus...")
