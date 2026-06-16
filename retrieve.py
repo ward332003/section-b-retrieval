@@ -42,6 +42,7 @@ def _load_resources(artifacts_dir: Optional[Path] = None) -> None:
     _page_ids = load_page_ids(artifacts_dir)
     _bm25 = load_bm25(artifacts_dir)
     _cross_encoder = CrossEncoder(CROSS_ENCODER_MODEL)
+    _cross_encoder.predict([("warmup", "warmup")])  # warm up GPU kernels
 
     # Load truncated page texts (title + first 300 words) for cross-encoder input
     _page_texts = {}
