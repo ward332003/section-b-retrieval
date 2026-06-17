@@ -141,7 +141,7 @@ python3 scripts/eval_public.py
 
 ### Presentation Assets
 
-Video Presentation : 
+Video Presentation : https://drive.google.com/file/d/1dsjcddG62Gqnpf76IFxZekyn1BZPq8LA/view?usp=sharing
 
 
 
